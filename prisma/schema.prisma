@@ -1,0 +1,286 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  FACULTY
+  STUDENT
+}
+
+enum TenantType {
+  COLLEGE
+  UNIVERSITY
+  TRAINING_INSTITUTE
+  PLACEMENT_CELL
+  STUDENT_COMMUNITY
+}
+
+enum ResourceType {
+  PDF
+  VIDEO
+  IMAGE
+  LINK
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum AssessmentType {
+  MCQ
+  CODING
+  SUBJECTIVE
+}
+
+enum SubmissionStatus {
+  PENDING
+  EVALUATED
+}
+
+enum ResumeTemplate {
+  FRESHER
+  SOFTWARE_ENGINEER
+  FULL_STACK
+  DATA_ANALYST
+}
+
+enum Theme {
+  DARK
+  LIGHT
+  MINIMAL
+  VIBRANT
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  name          String?
+  avatarUrl     String?
+  role          Role           @default(STUDENT)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  memberships   Membership[]
+  resources     Resource[]
+  projects      Project[]
+  submissions   Submission[]
+  resumes       Resume[]
+  portfolios    Portfolio[]
+  notifications Notification[]
+  activityLogs  ActivityLog[]
+
+  @@map("users")
+}
+
+model Tenant {
+  id             String         @id @default(uuid())
+  name           String
+  slug           String         @unique
+  type           TenantType
+  logoUrl        String?
+  primaryColor   String         @default("#0f172a")
+  secondaryColor String         @default("#3b82f6")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  memberships    Membership[]
+  resources      Resource[]
+  projects       Project[]
+  assessments    Assessment[]
+  activityLogs   ActivityLog[]
+  analytics      Analytics[]
+  subscription   Subscription?
+
+  @@index([slug])
+  @@map("tenants")
+}
+
+model Membership {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String
+  role      Role     @default(STUDENT)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@map("memberships")
+}
+
+model Resource {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  url         String
+  type        ResourceType
+  department  String?
+  semester    String?
+  subject     String?
+  tenantId    String
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@map("resources")
+}
+
+model Project {
+  id          String     @id @default(uuid())
+  title       String
+  description String
+  difficulty  Difficulty @default(BEGINNER)
+  techStack   String[]
+  githubUrl   String?
+  videoUrl    String?
+  screenshots String[]
+  resources   String[]
+  tenantId    String
+  createdById String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User       @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@map("projects")
+}
+
+model Assessment {
+  id              String         @id @default(uuid())
+  title           String
+  description     String?
+  durationMinutes Int            @default(30)
+  passingScore    Int            @default(50)
+  type            AssessmentType @default(MCQ)
+  tenantId        String
+  createdById     String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  questions       Question[]
+  submissions     Submission[]
+
+  @@map("assessments")
+}
+
+model Question {
+  id            String         @id @default(uuid())
+  assessmentId  String
+  type          AssessmentType
+  text          String
+  options       Json?
+  correctAnswer String
+  points        Int            @default(10)
+  order         Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  assessment    Assessment     @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@map("questions")
+}
+
+model Submission {
+  id           String           @id @default(uuid())
+  assessmentId String
+  studentId    String
+  score        Int              @default(0)
+  answers      Json
+  feedback     String?
+  status       SubmissionStatus @default(PENDING)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  assessment   Assessment       @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  student      User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("submissions")
+}
+
+model Resume {
+  id        String         @id @default(uuid())
+  studentId String
+  title     String         @default("My Resume")
+  template  ResumeTemplate @default(FRESHER)
+  content   Json
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  student   User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("resumes")
+}
+
+model Portfolio {
+  id          String   @id @default(uuid())
+  studentId   String   @unique
+  slug        String   @unique
+  title       String
+  description String?
+  theme       Theme    @default(MINIMAL)
+  content     Json
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("portfolios")
+}
+
+model Subscription {
+  id                   String   @id @default(uuid())
+  tenantId             String   @unique
+  plan                 String   @default("FREE")
+  status               String   @default("ACTIVE")
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String?
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@map("activity_logs")
+}
+
+model Analytics {
+  id         String   @id @default(uuid())
+  tenantId   String
+  metric     String
+  value      Float
+  recordedAt DateTime @default(now())
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("analytics")
+}
