@@ -1,4 +1,4 @@
-import { PrismaClient, Role, TenantType, ResourceType, Difficulty, AssessmentType, SubmissionStatus, ResumeTemplate, Theme } from '@prisma/client';
+import { PrismaClient, Role, Difficulty, ResourceType, RequestStatus, TicketStatus, TicketCategory, ResumeTemplate, Theme } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
@@ -9,369 +9,247 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log("🌱 Starting seeding database...");
+  console.log("🌱 Seeding Student growth & marketplace platform...");
 
-  // 1. Clean existing data in reverse order
-  console.log("🧹 Cleaning existing database tables...");
-  await prisma.analytics.deleteMany({});
-  await prisma.activityLog.deleteMany({});
+  // 1. Cleaning existing data in reverse order
+  console.log("🧹 Cleaning tables...");
+  await prisma.assistantSource.deleteMany({});
+  await prisma.faqEntry.deleteMany({});
+  await prisma.knowledgeArticle.deleteMany({});
   await prisma.notification.deleteMany({});
-  await prisma.subscription.deleteMany({});
+  await prisma.download.deleteMany({});
+  await prisma.contactSubmission.deleteMany({});
+  await prisma.blog.deleteMany({});
+  await prisma.blogCategory.deleteMany({});
+  await prisma.ticketMessage.deleteMany({});
+  await prisma.supportTicket.deleteMany({});
+  await prisma.websiteRequest.deleteMany({});
+  await prisma.serviceRequest.deleteMany({});
   await prisma.portfolio.deleteMany({});
   await prisma.resume.deleteMany({});
-  await prisma.submission.deleteMany({});
-  await prisma.question.deleteMany({});
-  await prisma.assessment.deleteMany({});
-  await prisma.project.deleteMany({});
+  await prisma.questionPaper.deleteMany({});
   await prisma.resource.deleteMany({});
-  await prisma.membership.deleteMany({});
-  await prisma.tenant.deleteMany({});
+  await prisma.savedProject.deleteMany({});
+  await prisma.project.deleteMany({});
+  await prisma.projectCategory.deleteMany({});
+  await prisma.profile.deleteMany({});
   await prisma.user.deleteMany({});
 
-  console.log("✅ Database tables cleared.");
+  console.log("✅ Tables cleared.");
 
   // 2. Create users
   console.log("👤 Creating seed users...");
-  const superAdmin = await prisma.user.create({
+  const adminUser = await prisma.user.create({
     data: {
-      email: "superadmin@growzi.com",
-      name: "Super Admin",
-      role: Role.SUPER_ADMIN,
-    },
-  });
-
-  const apexAdmin = await prisma.user.create({
-    data: {
-      email: "admin@apex.edu",
-      name: "Dr. Rajesh Kumar",
+      email: "admin@growzi.com",
       role: Role.ADMIN,
+      profile: {
+        create: {
+          name: "Growzi Admin Owner",
+          avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=128&h=128&fit=crop&q=80",
+          bio: "Lead developer and administrator of the Growzi platform.",
+        }
+      }
     },
   });
 
-  const apexFaculty = await prisma.user.create({
+  const studentUser = await prisma.user.create({
     data: {
-      email: "faculty@apex.edu",
-      name: "Prof. Sarah Miller",
-      role: Role.FACULTY,
-    },
-  });
-
-  const apexStudent = await prisma.user.create({
-    data: {
-      email: "student@apex.edu",
-      name: "Alex Carter",
+      email: "student@growzi.com",
       role: Role.STUDENT,
-    },
-  });
-
-  const communityStudent = await prisma.user.create({
-    data: {
-      email: "student@devsunited.org",
-      name: "Sophia Wang",
-      role: Role.STUDENT,
+      profile: {
+        create: {
+          name: "Alex Carter",
+          avatarUrl: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=128&h=128&fit=crop&q=80",
+          college: "Apex Engineering College",
+          department: "Computer Science",
+          graduationYear: "2026",
+          phone: "+1 (555) 019-2834",
+          bio: "Aspiring full-stack engineer and React enthusiast.",
+        }
+      }
     },
   });
 
   console.log("✅ Users created.");
 
-  // 3. Create tenants
-  console.log("🏢 Creating seed tenants...");
-  const apexCollege = await prisma.tenant.create({
+  // 3. Create Project Categories
+  console.log("📂 Creating project categories...");
+  const mernCat = await prisma.projectCategory.create({
+    data: { name: "MERN Stack", slug: "mern-stack" }
+  });
+  const pythonCat = await prisma.projectCategory.create({
+    data: { name: "Python", slug: "python" }
+  });
+  const flutterCat = await prisma.projectCategory.create({
+    data: { name: "Flutter", slug: "flutter" }
+  });
+  const aiCat = await prisma.projectCategory.create({
+    data: { name: "AI & ML", slug: "ai-ml" }
+  });
+
+  console.log("✅ Project categories created.");
+
+  // 4. Create Projects
+  console.log("🚀 Creating project guides...");
+  const p1 = await prisma.project.create({
     data: {
-      name: "Apex Engineering College",
-      slug: "apex-engineering",
-      type: TenantType.COLLEGE,
-      primaryColor: "#0f172a", // slate-900
-      secondaryColor: "#3b82f6", // blue-500
-      logoUrl: "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=128&h=128&fit=crop&q=80",
-    },
+      title: "Real-time Slack Clone",
+      description: "A messaging app built with real-time socket connections, multiple chat channel listings, and private messages capability.",
+      difficulty: Difficulty.BEGINNER,
+      techStack: ["React", "Node.js", "Socket.io", "CSS"],
+      screenshots: ["https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=60"],
+      documentation: "Clone repository, run npm install in frontend and backend. Initialize server on port 5000 and setup state hooks.",
+      resources: ["Socket.io rooms guide", "React Context docs"],
+      categoryId: mernCat.id
+    }
   });
 
-  const devsUnited = await prisma.tenant.create({
+  const p2 = await prisma.project.create({
     data: {
-      name: "DevsUnited Community",
-      slug: "devsunited",
-      type: TenantType.STUDENT_COMMUNITY,
-      primaryColor: "#09090b", // zinc-950
-      secondaryColor: "#10b981", // emerald-500
-      logoUrl: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=128&h=128&fit=crop&q=80",
-    },
+      title: "AI Resume Parser & Scraper",
+      description: "Extract text structure from PDF resumes using OCR pipelines, parse experiences, and suggest scoring fits using LLM integrations.",
+      difficulty: Difficulty.ADVANCED,
+      techStack: ["Python", "FastAPI", "Tesseract OCR", "OpenAI API"],
+      screenshots: ["https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=600&auto=format&fit=crop&q=60"],
+      documentation: "Create a python virtualenv, configure OpenAI API keys in config, and run fastapi server on port 8000.",
+      resources: ["FastAPI routing docs", "Tesseract layout analyzer guide"],
+      categoryId: aiCat.id
+    }
   });
 
-  console.log("✅ Tenants created.");
+  console.log("✅ Projects created.");
 
-  // 4. Create memberships
-  console.log("🤝 Creating memberships linking users to tenants...");
-  await prisma.membership.createMany({
-    data: [
-      { userId: apexAdmin.id, tenantId: apexCollege.id, role: Role.ADMIN },
-      { userId: apexFaculty.id, tenantId: apexCollege.id, role: Role.FACULTY },
-      { userId: apexStudent.id, tenantId: apexCollege.id, role: Role.STUDENT },
-      { userId: communityStudent.id, tenantId: devsUnited.id, role: Role.STUDENT },
-    ],
-  });
-
-  console.log("✅ Memberships created.");
-
-  // 5. Create subscriptions for tenants
-  console.log("💳 Creating tenant subscriptions...");
-  await prisma.subscription.create({
-    data: {
-      tenantId: apexCollege.id,
-      plan: "ENTERPRISE",
-      status: "ACTIVE",
-    },
-  });
-
-  await prisma.subscription.create({
-    data: {
-      tenantId: devsUnited.id,
-      plan: "FREE",
-      status: "ACTIVE",
-    },
-  });
-
-  console.log("✅ Subscriptions configured.");
-
-  // 6. Create Resources
-  console.log("📚 Seeding resources...");
+  // 5. Create Notes and resources
+  console.log("📚 Creating course materials...");
   await prisma.resource.createMany({
     data: [
       {
-        title: "Computer Networks Fundamentals",
-        description: "Comprehensive study guide covering TCP/IP stack, routing protocols, and HTTP protocol mechanics.",
+        title: "Computer Networks Lecture Slides",
+        description: "Study slides reviewing standard routing overlays, TCP sliding window, and socket configurations.",
         url: "https://www.w3.org/People/Frystyk/book/Overview.html",
         type: ResourceType.LINK,
         department: "Computer Science",
         semester: "Semester 5",
-        subject: "Computer Networks",
-        tenantId: apexCollege.id,
-        createdById: apexFaculty.id,
+        subject: "Computer Networks"
       },
       {
-        title: "SQL Performance Tuning Cheatsheet",
-        description: "Hands-on cheat sheet for indexing strategies, query execution plans, and optimization tips in PostgreSQL.",
-        url: "https://example.com/resources/sql-performance.pdf",
+        title: "Database System Internals PDF",
+        description: "Guide covering query execution planner, index pages nodes structure, and write ahead log mechanics.",
+        url: "https://example.com/db-internals.pdf",
         type: ResourceType.PDF,
         department: "Information Technology",
         semester: "Semester 6",
-        subject: "Database Management Systems",
-        tenantId: apexCollege.id,
-        createdById: apexFaculty.id,
-      },
-      {
-        title: "Building Microservices with Go",
-        description: "Introductory tutorial video demonstrating grpc setup and containerization of simple Go microservices.",
-        url: "https://www.youtube.com/watch?v=mockGoVideo",
-        type: ResourceType.VIDEO,
-        department: "Computer Science",
-        semester: "Semester 8",
-        subject: "Distributed Systems",
-        tenantId: apexCollege.id,
-        createdById: apexFaculty.id,
-      },
-      {
-        title: "Introduction to React and Zustand",
-        description: "Modern state management patterns inside React applications using Zustand. Shared for the student group.",
-        url: "https://zustand-demo.pmnd.rs",
-        type: ResourceType.LINK,
-        department: "Web Development",
-        semester: "N/A",
-        subject: "Frontend Engineering",
-        tenantId: devsUnited.id,
-        createdById: communityStudent.id,
-      },
-    ],
+        subject: "DBMS"
+      }
+    ]
   });
 
-  console.log("✅ Resources seeded.");
+  console.log("✅ Resources created.");
 
-  // 7. Create Projects
-  console.log("🚀 Seeding projects...");
-  await prisma.project.createMany({
+  // 6. Create Question Papers
+  console.log("📝 Creating question papers...");
+  await prisma.questionPaper.create({
+    data: {
+      department: "Computer Science",
+      semester: "Semester 5",
+      subject: "Computer Networks",
+      year: 2025,
+      url: "https://example.com/cn-paper-2025.pdf"
+    }
+  });
+
+  console.log("✅ Question papers created.");
+
+  // 7. Custom project & Website requests
+  console.log("🛍️ Creating service requests...");
+  await prisma.serviceRequest.create({
+    data: {
+      userId: studentUser.id,
+      name: "Alex Carter",
+      college: "Apex Engineering College",
+      department: "Computer Science",
+      projectTitle: "E-Commerce App with Payment",
+      technology: "MERN Stack, Stripe",
+      requirements: "Looking for a complete shopping cart build with stripe checkout and receipt mailing.",
+      deadline: new Date("2026-07-15"),
+      budget: 250,
+      status: RequestStatus.IN_REVIEW,
+      adminReply: "Reviewing tech stack requirements. We will match you with a technical guide shortly."
+    }
+  });
+
+  await prisma.websiteRequest.create({
+    data: {
+      userId: studentUser.id,
+      name: "Alex Carter",
+      businessName: "Carter Consulting",
+      websiteType: "Portfolio Consulting Website",
+      featuresNeeded: "Static pages, testimonial slider, custom feedback form.",
+      deadline: new Date("2026-08-01"),
+      budget: 150,
+      status: RequestStatus.PENDING
+    }
+  });
+
+  console.log("✅ Service requests created.");
+
+  // 8. Support Tickets
+  console.log("🎫 Creating support ticket threads...");
+  const ticket = await prisma.supportTicket.create({
+    data: {
+      userId: studentUser.id,
+      subject: "Stuck on Socket connection configurations in Slack Clone",
+      category: TicketCategory.DOUBT,
+      status: TicketStatus.OPEN,
+    }
+  });
+
+  await prisma.ticketMessage.createMany({
     data: [
       {
-        title: "Enterprise SaaS Analytics Portal",
-        description: "A comprehensive project involving full-stack implementation of a multi-tenant dashboard displaying active logs, user activity graphs, and subscription billing summaries.",
-        difficulty: Difficulty.ADVANCED,
-        techStack: ["Next.js", "TypeScript", "Prisma", "PostgreSQL", "Recharts", "Tailwind CSS"],
-        githubUrl: "https://github.com/apex-students/saas-analytics",
-        videoUrl: "https://youtube.com/watch?v=mockSaaSVideo",
-        screenshots: ["https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&auto=format&fit=crop&q=60"],
-        resources: ["Prisma docs", "Tailwind CSS docs", "Next.js routing guidelines"],
-        tenantId: apexCollege.id,
-        createdById: apexFaculty.id,
+        ticketId: ticket.id,
+        senderId: studentUser.id,
+        message: "Hi, I have initialized Socket.io but message broadcast logs are not reflecting on the client screen. Any ideas?"
       },
       {
-        title: "AI Resume Scanner & Parser",
-        description: "An open source project to extract information from resumes using Python, OCR engine, and Open Source LLM APIs.",
-        difficulty: Difficulty.INTERMEDIATE,
-        techStack: ["Python", "FastAPI", "Tesseract", "OpenAI API", "React"],
-        githubUrl: "https://github.com/devsunited/ai-resume-parser",
-        screenshots: ["https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=600&auto=format&fit=crop&q=60"],
-        resources: ["FastAPI documentation", "LangChain parsing guidelines"],
-        tenantId: devsUnited.id,
-        createdById: communityStudent.id,
-      },
-    ],
+        ticketId: ticket.id,
+        senderId: adminUser.id,
+        message: "Double check your CORS options in the socket initialization block on the backend server. It must permit port 3000."
+      }
+    ]
   });
 
-  console.log("✅ Projects seeded.");
+  console.log("✅ Support tickets created.");
 
-  // 8. Create Assessments & Questions
-  console.log("📝 Seeding assessments and questions...");
-  const assessment1 = await prisma.assessment.create({
-    data: {
-      title: "Core Web Technologies Quiz",
-      description: "Evaluate your understanding of CSS Grid, JavaScript event loop, and DOM manipulation basics.",
-      durationMinutes: 15,
-      passingScore: 60,
-      type: AssessmentType.MCQ,
-      tenantId: apexCollege.id,
-      createdById: apexFaculty.id,
-    },
-  });
-
-  await prisma.question.createMany({
-    data: [
-      {
-        assessmentId: assessment1.id,
-        type: AssessmentType.MCQ,
-        text: "Which of the following is true about JavaScript's event loop?",
-        options: [
-          "It executes blocking synchronous tasks in the background.",
-          "It continuously checks the call stack and event callback queues.",
-          "It operates on multi-threaded parallel processes.",
-          "It bypasses standard CPU thread allocations entirely."
-        ],
-        correctAnswer: "1", // Second option (index 1)
-        points: 10,
-        order: 0,
-      },
-      {
-        assessmentId: assessment1.id,
-        type: AssessmentType.MCQ,
-        text: "What does CSS Grid's 'fr' unit represent?",
-        options: [
-          "A fixed ratio multiplier.",
-          "A fraction of the free space in the grid container.",
-          "A frame boundary constraint.",
-          "A font-responsive height reference."
-        ],
-        correctAnswer: "1", // Second option (index 1)
-        points: 10,
-        order: 1,
-      },
-      {
-        assessmentId: assessment1.id,
-        type: AssessmentType.MCQ,
-        text: "Which array method returns a new array with all elements that pass a test?",
-        options: [
-          "map()",
-          "forEach()",
-          "filter()",
-          "reduce()"
-        ],
-        correctAnswer: "2", // Third option (index 2)
-        points: 10,
-        order: 2,
-      },
-    ],
-  });
-
-  const assessment2 = await prisma.assessment.create({
-    data: {
-      title: "Algorithms & Logic Prep",
-      description: "Write code to solve standard dynamic programming and string parsing tasks.",
-      durationMinutes: 30,
-      passingScore: 50,
-      type: AssessmentType.CODING,
-      tenantId: apexCollege.id,
-      createdById: apexFaculty.id,
-    },
-  });
-
-  await prisma.question.create({
-    data: {
-      assessmentId: assessment2.id,
-      type: AssessmentType.CODING,
-      text: "Write a function `isPalindrome(str)` that accepts a string and returns `true` if the string reads the same backward as forward (ignoring casing and non-alphanumeric characters), and `false` otherwise.",
-      correctAnswer: "function isPalindrome(str) {\n  const clean = str.toLowerCase().replace(/[^a-z0-9]/g, '');\n  return clean === clean.split('').reverse().join('');\n}",
-      points: 20,
-      order: 0,
-    },
-  });
-
-  console.log("✅ Assessments and Questions created.");
-
-  // 9. Create Submissions
-  console.log("📊 Seeding submission logs...");
-  await prisma.submission.create({
-    data: {
-      assessmentId: assessment1.id,
-      studentId: apexStudent.id,
-      score: 30, // 3/3 correct
-      answers: {
-        "0": "1",
-        "1": "1",
-        "2": "2",
-      },
-      status: SubmissionStatus.EVALUATED,
-      feedback: "Perfect work! Strong understanding of frontend internals.",
-    },
-  });
-
-  console.log("✅ Submissions created.");
-
-  // 10. Create Resume & Portfolio for student
-  console.log("📄 Seeding Resumes & Portfolios...");
+  // 9. Resumes & Portfolios
+  console.log("📄 Creating Resume & Portfolio presets...");
   await prisma.resume.create({
     data: {
-      studentId: apexStudent.id,
-      title: "Alex Carter Software Engineer Resume",
+      userId: studentUser.id,
+      title: "Alex Carter software engineer resume",
       template: ResumeTemplate.SOFTWARE_ENGINEER,
       content: {
         personal: {
           fullName: "Alex Carter",
-          email: "alex.carter@apex.edu",
+          email: "student@growzi.com",
           phone: "+1 (555) 019-2834",
           location: "San Francisco, CA",
           github: "github.com/alexcarter",
           linkedin: "linkedin.com/in/alexcarter",
         },
-        education: [
-          {
-            school: "Apex Engineering College",
-            degree: "Bachelor of Science in Computer Science",
-            date: "2022 - 2026",
-            gpa: "3.8/4.0",
-          },
-        ],
-        experience: [
-          {
-            company: "Tech Startups Inc",
-            role: "Software Engineering Intern",
-            date: "Summer 2025",
-            description: "Developed frontend interface for customer management dashboard using React and Tailwind CSS. Optimized database queries in PostgreSQL, achieving a 20% reduction in API response times.",
-          },
-        ],
-        skills: ["TypeScript", "React", "Next.js", "Node.js", "PostgreSQL", "Tailwind CSS", "Git"],
-        projects: [
-          {
-            name: "Enterprise SaaS Analytics Portal",
-            description: "Built a fully-featured client billing and logs display module. Integrated Recharts visualization overlays.",
-          },
-        ],
-      },
-    },
+        education: [{ school: "Apex Engineering College", degree: "B.S. in CS", date: "2022 - 2026", gpa: "3.8/4.0" }],
+        experience: [{ company: "Tech Startups Inc", role: "Intern", date: "2025", description: "React developer." }],
+        skills: ["React", "Next.js", "TypeScript", "PostgreSQL"],
+        projects: [{ name: "Slack Clone", description: "Messaging application." }]
+      }
+    }
   });
 
   await prisma.portfolio.create({
     data: {
-      studentId: apexStudent.id,
-      slug: "alex-carter",
-      title: "Alex Carter | Full Stack Developer Portfolio",
-      description: "Showcasing computer science engineering projects, skills, and assessment scores.",
+      userId: studentUser.id,
+      username: "alex-carter",
       theme: Theme.MINIMAL,
       isPublished: true,
       content: {
@@ -381,62 +259,69 @@ async function main() {
         socials: {
           github: "https://github.com/alexcarter",
           linkedin: "https://linkedin.com/in/alexcarter",
-          email: "mailto:alex.carter@apex.edu",
-        },
-      },
-    },
+          email: "mailto:student@growzi.com",
+        }
+      }
+    }
   });
 
-  console.log("✅ Resumes & Portfolios seeded.");
+  console.log("✅ Resume & Portfolio created.");
 
-  // 11. Create Notifications & Activity Logs
-  console.log("🔔 Seeding logs and notifications...");
-  await prisma.notification.createMany({
+  // 10. Blogs & categories
+  console.log("📰 Creating blogs...");
+  const bcat = await prisma.blogCategory.create({
+    data: { name: "Career Prep", slug: "career-prep" }
+  });
+
+  await prisma.blog.create({
+    data: {
+      title: "A Complete Guide to Technical Placement Preparation",
+      slug: "technical-placement-prep-guide",
+      content: "Preparing for full stack engineer reviews requires standard structure coding prep, algorithm reviews, database SQL performance checkpoints, and building responsive personal portfolios.",
+      thumbnail: "https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=600&auto=format&fit=crop&q=60",
+      categoryId: bcat.id,
+      tags: ["Placements", "Engineering", "Coding"],
+      isPublished: true
+    }
+  });
+
+  console.log("✅ Blogs created.");
+
+  // 11. Future AI Assistant knowledge
+  console.log("🧠 Seeding Future AI Assistant databases...");
+  await prisma.knowledgeArticle.create({
+    data: {
+      title: "Resolving Socket.io connection errors",
+      content: "Most socket connection failures result from mismatched ports or unconfigured CORS. Ensure server cors origins include client ports.",
+      category: "Doubt Solving",
+      tags: ["WebSockets", "Node.js", "React"]
+    }
+  });
+
+  await prisma.faqEntry.createMany({
     data: [
       {
-        userId: apexStudent.id,
-        title: "New Resource Available",
-        message: "Prof. Sarah Miller uploaded 'Computer Networks Fundamentals'. Check the Resource Hub.",
+        question: "How do I request a custom coding project?",
+        answer: "Navigate to the Custom Project Request system inside the dashboard workspace, submit requirements and budget, and await administrator review notes.",
+        category: "General",
+        order: 1
       },
       {
-        userId: apexStudent.id,
-        title: "Assessment Scored",
-        message: "Your submission for 'Core Web Technologies Quiz' has been evaluated: Score 30/30.",
-      },
-    ],
+        question: "Is there a limit on portfolio theme selections?",
+        answer: "No, students can configure their portfolios in the editor panel using Minimal, Vibrant, Dark, or Light themes at any time.",
+        category: "Portfolios",
+        order: 2
+      }
+    ]
   });
 
-  await prisma.activityLog.createMany({
-    data: [
-      {
-        userId: apexFaculty.id,
-        tenantId: apexCollege.id,
-        action: "RESOURCE_UPLOAD",
-        details: "Uploaded resource: 'Computer Networks Fundamentals'",
-      },
-      {
-        userId: apexStudent.id,
-        tenantId: apexCollege.id,
-        action: "ASSESSMENT_SUBMIT",
-        details: "Submitted assessment: 'Core Web Technologies Quiz'",
-      },
-    ],
+  await prisma.assistantSource.create({
+    data: {
+      title: "Growzi Project Guidelines Index",
+      type: "TEXT",
+      content: "This document describes project formats, difficulty definitions, technology options, and grading standards."
+    }
   });
-
-  // 12. Create Analytics data
-  console.log("📈 Seeding analytics...");
-  await prisma.analytics.createMany({
-    data: [
-      { tenantId: apexCollege.id, metric: "active_students", value: 124 },
-      { tenantId: apexCollege.id, metric: "resource_downloads", value: 482 },
-      { tenantId: apexCollege.id, metric: "assessment_average_score", value: 78.5 },
-      { tenantId: apexCollege.id, metric: "placement_readiness_rate", value: 82.0 },
-      { tenantId: devsUnited.id, metric: "active_students", value: 42 },
-      { tenantId: devsUnited.id, metric: "resource_downloads", value: 15 },
-    ],
-  });
-
-  console.log("✅ Analytics seeded.");
 
   console.log("🎉 Database seeding completed successfully!");
 }

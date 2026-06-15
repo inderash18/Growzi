@@ -3,87 +3,34 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GraduationCap, Lock, Mail, Loader2, ArrowRight } from "lucide-react";
+import { GraduationCap, Lock, Mail, ArrowRight, Sparkles, CheckCircle2, ArrowLeft } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useTenantStore } from "@/store/useTenantStore";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input, Label } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const { setUser, setSession, setLoading } = useAuthStore();
-  const { setMemberships } = useTenantStore();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock users database to support instant testing
   const presetUsers = [
-    {
-      email: "superadmin@growzi.com",
-      name: "Super Admin",
-      role: "SUPER_ADMIN" as const,
-      memberships: [],
-    },
-    {
-      email: "admin@apex.edu",
-      name: "Dr. Rajesh Kumar",
-      role: "ADMIN" as const,
-      memberships: [
-        {
-          id: "m1",
-          role: "ADMIN" as const,
-          tenant: {
-            id: "t1",
-            name: "Apex Engineering College",
-            slug: "apex-engineering",
-            type: "COLLEGE",
-            primaryColor: "#0f172a",
-            secondaryColor: "#3b82f6",
-            logoUrl: "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=128&h=128&fit=crop&q=80",
-          }
-        }
-      ]
-    },
-    {
-      email: "faculty@apex.edu",
-      name: "Prof. Sarah Miller",
-      role: "FACULTY" as const,
-      memberships: [
-        {
-          id: "m2",
-          role: "FACULTY" as const,
-          tenant: {
-            id: "t1",
-            name: "Apex Engineering College",
-            slug: "apex-engineering",
-            type: "COLLEGE",
-            primaryColor: "#0f172a",
-            secondaryColor: "#3b82f6",
-            logoUrl: "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=128&h=128&fit=crop&q=80",
-          }
-        }
-      ]
-    },
     {
       email: "student@apex.edu",
       name: "Alex Carter",
       role: "STUDENT" as const,
-      memberships: [
-        {
-          id: "m3",
-          role: "STUDENT" as const,
-          tenant: {
-            id: "t1",
-            name: "Apex Engineering College",
-            slug: "apex-engineering",
-            type: "COLLEGE",
-            primaryColor: "#0f172a",
-            secondaryColor: "#3b82f6",
-            logoUrl: "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=128&h=128&fit=crop&q=80",
-          }
-        }
-      ]
+    },
+    {
+      email: "admin@apex.edu",
+      name: "Marcus Vance",
+      role: "ADMIN" as const,
     },
   ];
 
@@ -93,56 +40,52 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      // Look up inside preset credentials first for instant testing
       const matched = presetUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
       
       if (matched) {
-        // Mock successful login
         setUser({
-          id: matched.email === "superadmin@growzi.com" ? "sa" : "usr-" + matched.role.toLowerCase(),
+          id: matched.email === "admin@apex.edu" ? "usr-admin" : "usr-student",
           email: matched.email,
           name: matched.name,
           role: matched.role,
         });
         setSession({ access_token: "mock-token", user: matched });
-        setMemberships(matched.memberships);
         setLoading(false);
+        toast(`Signed in successfully as ${matched.name}`, "success");
         
-        router.push("/select-workspace");
+        if (matched.role === "ADMIN") {
+          router.push("/admin");
+        } else {
+          router.push("/dashboard");
+        }
         return;
       }
 
-      // Fallback: Check if they input values or if we should warn
       if (email && password) {
-        // Create an on-the-fly student user if not in presets to be developer friendly
-        setUser({
+        const role = email.includes("admin") ? "ADMIN" as const : "STUDENT" as const;
+        const mockUser = {
           id: "usr-dynamic",
           email: email,
           name: email.split("@")[0],
-          role: "STUDENT",
-        });
-        setSession({ access_token: "mock-token" });
-        setMemberships([
-          {
-            id: "m-dynamic",
-            role: "STUDENT",
-            tenant: {
-              id: "t1",
-              name: "Apex Engineering College",
-              slug: "apex-engineering",
-              type: "COLLEGE",
-              primaryColor: "#0f172a",
-              secondaryColor: "#3b82f6",
-            }
-          }
-        ]);
+          role: role,
+        };
+        setUser(mockUser);
+        setSession({ access_token: "mock-token", user: mockUser });
         setLoading(false);
-        router.push("/select-workspace");
+        toast("Signed in successfully", "success");
+
+        if (role === "ADMIN") {
+          router.push("/admin");
+        } else {
+          router.push("/dashboard");
+        }
       } else {
         setError("Invalid email or password");
+        toast("Authentication failed", "error");
       }
     } catch (err) {
       setError("An unexpected error occurred during sign in.");
+      toast("Authentication failed", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -151,149 +94,206 @@ export default function LoginPage() {
   const handleQuickLogin = (emailStr: string) => {
     setEmail(emailStr);
     setPassword("password123");
+    toast(`Preset selected. Click 'Sign In' to enter.`, "info");
+  };
+
+  const handleGoogleLogin = () => {
+    toast("Google authentication is in demo mode. Signing in as test student.", "info");
+    const mockUser = {
+      id: "usr-google",
+      email: "google.student@apex.edu",
+      name: "Google Student",
+      role: "STUDENT" as const,
+    };
+    setUser(mockUser);
+    setSession({ access_token: "mock-token", user: mockUser });
+    setLoading(false);
+    router.push("/dashboard");
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center py-12 px-6 relative font-sans">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none" />
+    <div className="min-h-screen text-zinc-100 flex items-center justify-center relative font-sans overflow-hidden bg-zinc-950">
+      
+      {/* Background visual image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center" 
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1920&q=80')" }} 
+      />
+      <div className="absolute inset-0 bg-zinc-950/80 backdrop-blur-md" />
+      
+      {/* Subtle Grid Overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
+      
+      {/* Visual Ambient Glows */}
+      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none animate-pulse duration-[8000ms]" />
+      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none animate-pulse duration-[10000ms]" />
 
-      <div className="w-full max-w-md bg-slate-900/40 border border-slate-800 p-8 rounded-2xl relative z-10 backdrop-blur-md shadow-2xl shadow-indigo-950/25">
-        <div className="flex flex-col items-center mb-8">
-          <Link href="/" className="flex items-center gap-2 mb-4 group">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-blue-500 flex items-center justify-center shadow-lg group-hover:scale-105 transition-all">
-              <GraduationCap className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold tracking-tight text-white">Growzi</span>
-          </Link>
-          <h2 className="text-xl font-semibold">Welcome back</h2>
-          <p className="text-slate-400 text-sm mt-1">Sign in to access your dashboard</p>
-        </div>
+      {/* Header Back Button */}
+      <Link 
+        href="/" 
+        className="absolute top-6 left-6 flex items-center gap-2 text-xs text-zinc-400 hover:text-zinc-200 transition-colors z-20 group font-semibold"
+      >
+        <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+        Back to home
+      </Link>
 
-        {error && (
-          <div className="bg-red-950/40 border border-red-500/30 text-red-200 text-sm p-3 rounded-lg mb-6">
-            {error}
+      {/* Glassmorphic Container */}
+      <div className="w-full max-w-[440px] px-6 py-8 relative z-10 animate-fade-in">
+        <div className="bg-zinc-900/60 border border-white/10 backdrop-blur-xl shadow-2xl rounded-2xl p-8 space-y-6">
+          
+          {/* Logo & Headline */}
+          <div className="text-center space-y-2">
+            <Link href="/" className="inline-flex items-center gap-2 group mb-2">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/10">
+                <GraduationCap className="h-5 w-5" />
+              </div>
+              <span className="text-xl font-black tracking-tight text-white">Growzi</span>
+            </Link>
+            <h1 className="text-2xl font-bold tracking-tight text-white">Welcome back</h1>
+            <p className="text-xs text-zinc-400 font-normal">
+              Enter credentials below to enter your workspace catalog.
+            </p>
           </div>
-        )}
 
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 pointer-events-none">
-                <Mail className="h-4.5 w-4.5" />
-              </span>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@school.edu"
-                className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm text-slate-200 placeholder-slate-600 transition-colors"
-              />
+          {error && (
+            <div className="p-3.5 bg-rose-950/30 border border-rose-500/20 text-rose-300 text-xs rounded-xl font-semibold flex items-center gap-2 animate-scale-in">
+              <Sparkles className="h-4 w-4 shrink-0 text-rose-400" /> 
+              {error}
             </div>
-          </div>
+          )}
 
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Password
+          {/* Form */}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-zinc-400">Email Address</Label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500 pointer-events-none">
+                  <Mail className="h-4 w-4" />
+                </span>
+                <Input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@school.edu"
+                  className="pl-10 bg-zinc-950/40 border-white/10 text-zinc-100 placeholder-zinc-500 focus:border-blue-500 focus:ring-blue-500/10 shadow-none h-10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center select-none">
+                <Label className="text-zinc-400 mb-0">Password</Label>
+                <Link 
+                  href="/forgot-password" 
+                  className="text-[10px] text-zinc-400 hover:text-zinc-200 transition-colors font-semibold"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-zinc-500 pointer-events-none">
+                  <Lock className="h-4 w-4" />
+                </span>
+                <Input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="pl-10 bg-zinc-950/40 border-white/10 text-zinc-100 placeholder-zinc-500 focus:border-blue-500 focus:ring-blue-500/10 shadow-none h-10"
+                />
+              </div>
+            </div>
+
+            {/* Remember me and helper check */}
+            <div className="flex items-center justify-between py-1 select-none">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input 
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-white/10 bg-zinc-950/40 text-blue-600 focus:ring-blue-500/10 focus:ring-offset-0 h-4 w-4 transition-all"
+                />
+                <span className="text-[11px] text-zinc-400 group-hover:text-zinc-350 transition-colors font-medium">Remember my session</span>
               </label>
-              <Link 
-                href="/forgot-password" 
-                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-              >
-                Forgot Password?
-              </Link>
             </div>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 pointer-events-none">
-                <Lock className="h-4.5 w-4.5" />
-              </span>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm text-slate-200 placeholder-slate-600 transition-colors"
-              />
-            </div>
+
+            <Button
+              type="submit"
+              variant="indigo"
+              size="md"
+              isLoading={isSubmitting}
+              className="w-full font-bold select-none cursor-pointer bg-blue-600 hover:bg-blue-700 border-none h-10 rounded-xl"
+            >
+              Sign In
+            </Button>
+          </form>
+
+          {/* Divider */}
+          <div className="relative flex py-1 items-center select-none">
+            <div className="flex-grow border-t border-white/5"></div>
+            <span className="flex-shrink mx-4 text-[9px] uppercase tracking-wider text-zinc-500 font-bold">Or continue with</span>
+            <div className="flex-grow border-t border-white/5"></div>
           </div>
 
+          {/* Social Sign In */}
           <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full inline-flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-sm font-semibold rounded-lg text-white transition-colors border border-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full py-2.5 px-4 bg-zinc-950/30 hover:bg-zinc-950/50 border border-white/10 hover:border-white/15 rounded-xl text-xs font-bold text-zinc-200 hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-inner"
           >
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              "Sign In"
-            )}
+            <svg className="h-4.5 w-4.5" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21.35 11.1H12v2.7h5.38c-.24 1.28-.96 2.37-2.04 3.1v2.6h3.29c1.92-1.77 3.02-4.38 3.02-7.4 0-.55-.1-1-.3-1.3z" fill="#4285F4" />
+              <path d="M12 20.5c2.3 0 4.23-.76 5.64-2.08l-3.29-2.6c-.91.61-2.08.98-3.35.98-2.57 0-4.75-1.74-5.53-4.07H2.08v2.7C3.58 18.02 7.54 20.5 12 20.5z" fill="#34A853" />
+              <path d="M6.47 12.73c-.2-.61-.31-1.27-.31-1.93s.11-1.32.31-1.93V6.2H2.08c-.69 1.38-1.08 2.94-1.08 4.6s.39 3.22 1.08 4.6l4.39-3.47z" fill="#FBBC05" />
+              <path d="M12 6.18c1.25 0 2.37.43 3.25 1.27l2.44-2.44C16.22 3.61 14.28 3 12 3 7.54 3 3.58 5.48 2.08 8.2v2.7l4.39-2.07c.78-2.33 2.96-4.07 5.53-4.07z" fill="#EA4335" />
+            </svg>
+            Continue with Google
           </button>
-        </form>
 
-        <p className="text-xs text-center text-slate-500 mt-6">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium">
-            Sign up
-          </Link>
-        </p>
-
-        {/* Preset accounts container */}
-        <div className="mt-8 pt-6 border-t border-slate-800/60">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3.5 text-center">
-            Instant Role Presets for Testing
+          <p className="text-xs text-center text-zinc-400 select-none">
+            New to Growzi?{" "}
+            <Link href="/signup" className="text-blue-400 hover:text-blue-300 transition-colors font-bold">
+              Sign up
+            </Link>
           </p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              onClick={() => handleQuickLogin("student@apex.edu")}
-              className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-left hover:border-indigo-500/30 hover:bg-slate-900/50 transition-colors group flex items-center justify-between"
-            >
-              <div>
-                <span className="font-semibold block text-slate-200">Alex Carter</span>
-                <span className="text-slate-500 block text-[10px]">Role: Student</span>
-              </div>
-              <ArrowRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" />
-            </button>
 
-            <button
-              onClick={() => handleQuickLogin("faculty@apex.edu")}
-              className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-left hover:border-indigo-500/30 hover:bg-slate-900/50 transition-colors group flex items-center justify-between"
-            >
-              <div>
-                <span className="font-semibold block text-slate-200">Prof. Sarah</span>
-                <span className="text-slate-500 block text-[10px]">Role: Faculty</span>
-              </div>
-              <ArrowRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" />
-            </button>
+          {/* Quick login presets */}
+          <div className="pt-5 border-t border-white/5 select-none space-y-2.5">
+            <span className="block text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
+              Demo Test Accounts
+            </span>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <button
+                type="button"
+                onClick={() => handleQuickLogin("student@apex.edu")}
+                className="p-3 bg-zinc-950/20 hover:bg-zinc-950/40 border border-white/5 hover:border-white/10 rounded-xl text-left transition-all group flex items-center justify-between cursor-pointer"
+              >
+                <div>
+                  <span className="font-bold block text-zinc-200 text-[10px] truncate">Alex Carter</span>
+                  <span className="text-zinc-500 block text-[8px] mt-0.5">Student Role</span>
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-zinc-600 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
+              </button>
 
-            <button
-              onClick={() => handleQuickLogin("admin@apex.edu")}
-              className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-left hover:border-indigo-500/30 hover:bg-slate-900/50 transition-colors group flex items-center justify-between"
-            >
-              <div>
-                <span className="font-semibold block text-slate-200">Dr. Rajesh</span>
-                <span className="text-slate-500 block text-[10px]">Role: Inst. Admin</span>
-              </div>
-              <ArrowRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" />
-            </button>
-
-            <button
-              onClick={() => handleQuickLogin("superadmin@growzi.com")}
-              className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-left hover:border-indigo-500/30 hover:bg-slate-900/50 transition-colors group flex items-center justify-between"
-            >
-              <div>
-                <span className="font-semibold block text-slate-200">Super Admin</span>
-                <span className="text-slate-500 block text-[10px]">Role: Platform Owner</span>
-              </div>
-              <ArrowRight className="h-3.5 w-3.5 text-slate-600 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" />
-            </button>
+              <button
+                type="button"
+                onClick={() => handleQuickLogin("admin@apex.edu")}
+                className="p-3 bg-zinc-950/20 hover:bg-zinc-950/40 border border-white/5 hover:border-white/10 rounded-xl text-left transition-all group flex items-center justify-between cursor-pointer"
+              >
+                <div>
+                  <span className="font-bold block text-zinc-200 text-[10px] truncate">Marcus Vance</span>
+                  <span className="text-zinc-500 block text-[8px] mt-0.5">Admin Role</span>
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-zinc-600 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
+              </button>
+            </div>
           </div>
+
         </div>
       </div>
+
     </div>
   );
 }

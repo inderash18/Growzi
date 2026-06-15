@@ -1,13 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b; /* Default to dark theme slate */
-  --foreground: #f4f4f5;
+  --background: #F8FAFC; /* Slate 50 background */
+  --foreground: #0F172A; /* Slate 900 foreground */
+  --border: #E2E8F0;     /* Slate 200 border */
+  --input: #FFFFFF;      /* White input background */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui;
   --font-mono: var(--font-geist-mono), ui-mono, monospace;
 }
@@ -16,13 +20,46 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Micro-animations for high-fidelity interactive feel */
+/* Scrollbar customization for modern minimal look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1; /* Slate 300 */
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8; /* Slate 400 */
+}
+
+/* Spacing classes & typography resets */
+input, textarea, select {
+  font-family: inherit;
+}
+
+/* Smooth transition defaults for all interactive state changes */
+a, button, input, select, textarea, div {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Micro-animations for page entries & dialogs */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -33,7 +70,7 @@ body {
 @keyframes scaleIn {
   from {
     opacity: 0;
-    transform: scale(0.98);
+    transform: scale(0.995);
   }
   to {
     opacity: 1;
@@ -42,9 +79,18 @@ body {
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* High contrast accessibility helpers */
+.focus-ring {
+  focus-visible:outline-none;
+  focus-visible:ring-1;
+  focus-visible:ring-slate-400;
+  focus-visible:ring-offset-1;
+  focus-visible:ring-offset-white;
 }

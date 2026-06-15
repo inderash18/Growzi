@@ -7,25 +7,8 @@ generator client {
 }
 
 enum Role {
-  SUPER_ADMIN
-  ADMIN
-  FACULTY
   STUDENT
-}
-
-enum TenantType {
-  COLLEGE
-  UNIVERSITY
-  TRAINING_INSTITUTE
-  PLACEMENT_CELL
-  STUDENT_COMMUNITY
-}
-
-enum ResourceType {
-  PDF
-  VIDEO
-  IMAGE
-  LINK
+  ADMIN
 }
 
 enum Difficulty {
@@ -34,15 +17,35 @@ enum Difficulty {
   ADVANCED
 }
 
-enum AssessmentType {
-  MCQ
-  CODING
-  SUBJECTIVE
+enum ResourceType {
+  PDF
+  DOCX
+  PPT
+  IMAGE
+  VIDEO
+  LINK
 }
 
-enum SubmissionStatus {
+enum RequestStatus {
   PENDING
-  EVALUATED
+  IN_REVIEW
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum TicketCategory {
+  DOUBT
+  TECHNICAL
+  BILLING
+  OTHER
 }
 
 enum ResumeTemplate {
@@ -60,60 +63,79 @@ enum Theme {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  name          String?
-  avatarUrl     String?
-  role          Role           @default(STUDENT)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  memberships   Membership[]
-  resources     Resource[]
-  projects      Project[]
-  submissions   Submission[]
-  resumes       Resume[]
-  portfolios    Portfolio[]
-  notifications Notification[]
-  activityLogs  ActivityLog[]
+  id               String            @id @default(uuid())
+  email            String            @unique
+  role             Role              @default(STUDENT)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  profile          Profile?
+  savedProjects    SavedProject[]
+  resumes          Resume[]
+  portfolio        Portfolio?
+  serviceRequests  ServiceRequest[]
+  websiteRequests  WebsiteRequest[]
+  supportTickets   SupportTicket[]
+  ticketMessages   TicketMessage[]
+  downloads        Download[]
+  notifications    Notification[]
 
   @@map("users")
 }
 
-model Tenant {
-  id             String         @id @default(uuid())
-  name           String
-  slug           String         @unique
-  type           TenantType
-  logoUrl        String?
-  primaryColor   String         @default("#0f172a")
-  secondaryColor String         @default("#3b82f6")
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  memberships    Membership[]
-  resources      Resource[]
-  projects       Project[]
-  assessments    Assessment[]
-  activityLogs   ActivityLog[]
-  analytics      Analytics[]
-  subscription   Subscription?
+model Profile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  name           String?
+  avatarUrl      String?
+  college        String?
+  department     String?
+  graduationYear String?
+  phone          String?
+  bio            String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([slug])
-  @@map("tenants")
+  @@map("profiles")
 }
 
-model Membership {
+model ProjectCategory {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  projects    Project[]
+
+  @@map("project_categories")
+}
+
+model Project {
+  id            String          @id @default(uuid())
+  title         String
+  description   String
+  difficulty    Difficulty      @default(BEGINNER)
+  techStack     String[]
+  screenshots   String[]
+  documentation String?
+  resources     String[]
+  categoryId    String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  category      ProjectCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  savedBy       SavedProject[]
+
+  @@map("projects")
+}
+
+model SavedProject {
   id        String   @id @default(uuid())
   userId    String
-  tenantId  String
-  role      Role     @default(STUDENT)
-  isActive  Boolean  @default(true)
+  projectId String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, tenantId])
-  @@map("memberships")
+  @@unique([userId, projectId])
+  @@map("saved_projects")
 }
 
 model Resource {
@@ -122,131 +144,170 @@ model Resource {
   description String?
   url         String
   type        ResourceType
-  department  String?
-  semester    String?
-  subject     String?
-  tenantId    String
-  createdById String
+  department  String
+  semester    String
+  subject     String
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdBy   User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  downloads   Download[]
 
   @@map("resources")
 }
 
-model Project {
-  id          String     @id @default(uuid())
-  title       String
-  description String
-  difficulty  Difficulty @default(BEGINNER)
-  techStack   String[]
-  githubUrl   String?
-  videoUrl    String?
-  screenshots String[]
-  resources   String[]
-  tenantId    String
-  createdById String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdBy   User       @relation(fields: [createdById], references: [id], onDelete: Cascade)
+model QuestionPaper {
+  id         String     @id @default(uuid())
+  department String
+  semester   String
+  subject    String
+  year       Int
+  url        String
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  downloads  Download[]
 
-  @@map("projects")
-}
-
-model Assessment {
-  id              String         @id @default(uuid())
-  title           String
-  description     String?
-  durationMinutes Int            @default(30)
-  passingScore    Int            @default(50)
-  type            AssessmentType @default(MCQ)
-  tenantId        String
-  createdById     String
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  questions       Question[]
-  submissions     Submission[]
-
-  @@map("assessments")
-}
-
-model Question {
-  id            String         @id @default(uuid())
-  assessmentId  String
-  type          AssessmentType
-  text          String
-  options       Json?
-  correctAnswer String
-  points        Int            @default(10)
-  order         Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  assessment    Assessment     @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-
-  @@map("questions")
-}
-
-model Submission {
-  id           String           @id @default(uuid())
-  assessmentId String
-  studentId    String
-  score        Int              @default(0)
-  answers      Json
-  feedback     String?
-  status       SubmissionStatus @default(PENDING)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  assessment   Assessment       @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  student      User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@map("submissions")
+  @@map("question_papers")
 }
 
 model Resume {
   id        String         @id @default(uuid())
-  studentId String
+  userId    String
   title     String         @default("My Resume")
   template  ResumeTemplate @default(FRESHER)
   content   Json
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
-  student   User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("resumes")
 }
 
 model Portfolio {
   id          String   @id @default(uuid())
-  studentId   String   @unique
-  slug        String   @unique
-  title       String
-  description String?
+  userId      String   @unique
+  username    String   @unique
   theme       Theme    @default(MINIMAL)
   content     Json
   isPublished Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("portfolios")
 }
 
-model Subscription {
-  id                   String   @id @default(uuid())
-  tenantId             String   @unique
-  plan                 String   @default("FREE")
-  status               String   @default("ACTIVE")
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  currentPeriodEnd     DateTime?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+model ServiceRequest {
+  id          String        @id @default(uuid())
+  userId      String
+  name        String
+  college     String
+  department  String
+  projectTitle String
+  technology  String
+  requirements String
+  deadline    DateTime
+  budget      Float
+  status      RequestStatus @default(PENDING)
+  adminReply  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("subscriptions")
+  @@map("service_requests")
+}
+
+model WebsiteRequest {
+  id             String        @id @default(uuid())
+  userId         String
+  name           String
+  businessName   String
+  websiteType    String
+  featuresNeeded String
+  deadline       DateTime
+  budget         Float
+  status         RequestStatus @default(PENDING)
+  adminReply     String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("website_requests")
+}
+
+model SupportTicket {
+  id          String         @id @default(uuid())
+  userId      String
+  subject     String
+  category    TicketCategory @default(DOUBT)
+  status      TicketStatus   @default(OPEN)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    TicketMessage[]
+
+  @@map("support_tickets")
+}
+
+model TicketMessage {
+  id        String        @id @default(uuid())
+  ticketId  String
+  senderId  String
+  message   String
+  createdAt DateTime      @default(now())
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender    User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("ticket_messages")
+}
+
+model BlogCategory {
+  id    String @id @default(uuid())
+  name  String @unique
+  slug  String @unique
+  blogs Blog[]
+
+  @@map("blog_categories")
+}
+
+model Blog {
+  id             String       @id @default(uuid())
+  title          String
+  slug           String       @unique
+  content        String
+  thumbnail      String?
+  categoryId     String
+  tags           String[]
+  seoTitle       String?
+  seoDescription String?
+  isPublished    Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  category       BlogCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("blogs")
+}
+
+model ContactSubmission {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  createdAt DateTime @default(now())
+
+  @@map("contacts")
+}
+
+model Download {
+  id              String         @id @default(uuid())
+  userId          String
+  resourceId      String?
+  questionPaperId String?
+  downloadedAt    DateTime       @default(now())
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource        Resource?      @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  questionPaper   QuestionPaper? @relation(fields: [questionPaperId], references: [id], onDelete: SetNull)
+
+  @@map("downloads")
 }
 
 model Notification {
@@ -261,26 +322,35 @@ model Notification {
   @@map("notifications")
 }
 
-model ActivityLog {
+// Future Knowledge Bot Schema tables
+model KnowledgeArticle {
   id        String   @id @default(uuid())
-  userId    String
-  tenantId  String?
-  action    String
-  details   String?
+  title     String
+  content   String
+  category  String
+  tags      String[]
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
-  @@map("activity_logs")
+  @@map("knowledge_articles")
 }
 
-model Analytics {
-  id         String   @id @default(uuid())
-  tenantId   String
-  metric     String
-  value      Float
-  recordedAt DateTime @default(now())
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+model FaqEntry {
+  id        String   @id @default(uuid())
+  question  String
+  answer    String
+  category  String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 
-  @@map("analytics")
+  @@map("faq_entries")
+}
+
+model AssistantSource {
+  id        String   @id @default(uuid())
+  title     String
+  type      String
+  content   String
+  createdAt DateTime @default(now())
+
+  @@map("assistant_sources")
 }
